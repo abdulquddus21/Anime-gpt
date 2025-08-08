@@ -579,15 +579,15 @@ export default function Home() {
         </div>
       )}
 
-      <main className="pt-24 px-4 md:px-8 max-w-4xl mx-auto pb-24">
-        <div className="bg-white/10 backdrop-blur-lg shadow-xl rounded-2xl p-6 border border-white/20">
+      <main className="pt-17   md:px-8 max-w-4xl mx-auto ">
+        <div className="h-[100%]  bg-white/10 backdrop-blur-lg shadow-xl rounded-2xl border pr-3  pb-20 border-white/20">
           {messages.length === 0 ? (
-            <p className="text-center text-gray-300"><b>Anime AI 😊 Savol Yozing!</b></p>
+            <p className="text-center text-gray-300 mt-4"><b>Anime AI 😊 Savol Yozing!</b></p>
           ) : (
             messages.map((msg, index) => (
               <div
                 key={index}
-                className={`message-container ${msg.role === "user" ? "ml-auto bg-pink-600/30 user-message" : "mr-auto bg-gray-800/50 ai-message"}`}
+                className={`message-container ${msg.role === "user" ? "ml-10 border-1  user-message" : " ml-2 border border-white/100 !shadow-none font-bold  text-black mr-auto ai-message"}`}
               >
                 {msg.role === "ai" && msg.isNew && !isStopped ? (
                   <TypingAnimation
@@ -615,10 +615,12 @@ export default function Home() {
           {isLoading && (
             <div className="text-center">
               <span className="loader"></span>
+
             </div>
           )}
           <div ref={messageEndRef} />
-        </div>
+          
+                  </div>
 
         <div className="fixed-input">
           <div className="relative w-full">

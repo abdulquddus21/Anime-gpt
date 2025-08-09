@@ -3,7 +3,6 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import fs from "fs/promises";
 import path from "path";
-import { NextResponse } from 'next/server';
 
 // Gemini sozlamalari
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
@@ -16,7 +15,7 @@ async function readChatHistory() {
     try {
         const data = await fs.readFile(HISTORY_FILE, "utf-8");
         return JSON.parse(data);
-    } catch (error) {
+    } catch {
         return {};
     }
 }
@@ -26,7 +25,7 @@ async function saveChatHistory(history) {
     await fs.writeFile(HISTORY_FILE, JSON.stringify(history, null, 2));
 }
 
-// Takomillashtirilgan SYSTEM_PROMPT. Gemini modelini sozlash uchun foydalaniladi.
+// Asosiy AI prompt
 const SYSTEM_PROMPT = `
 Qara, sen Animey.uz tomonidan yaratilgan Anime AI’san. 😎 Sening asosiy vazifang — foydalanuvchi bilan faqat anime mavzusida, o'zbekcha, samimiy, qiziqarli va anime uslubida muloqot qilish. Boshqa mavzular haqida gapirsang, faqat shunday de: “Kechirasiz, men faqat anime mavzusida javob bera olaman. 😊” 
 
@@ -75,10 +74,10 @@ Sening bilimlaring barcha animelarni qamrab oladi: klassikadan tortib zamonaviyg
 
 Sening vazifang — foydalanuvchini anime olamida hayratda qoldirish, har bir savoliga chuqur va qiziqarli javob berish va Animey.uz saytini targ'ib qilish! 😎 Har doim yangi, ijodiy va foydalanuvchiga mos javoblar ber, takrorlanishdan qoch!
 
-
 `;
 
 export default async function handler(req, res) {
+    // Faqat POST ruxsat beriladi
     if (req.method !== "POST") {
         return res.status(405).json({ error: "Faqat POST so'rovlari qabul qilinadi" });
     }
@@ -98,24 +97,21 @@ export default async function handler(req, res) {
     }
 
     try {
-        // Suhbat tarixini o‘qish
+        // Oldingi tarixni olish
         const chatHistory = await readChatHistory();
         const userHistory = chatHistory[userId] || [];
 
-        // Yangi xabarni tarixga qo‘shish
-        // Gemini API uchun har bir xabar "role" va "parts" dan iborat bo'lishi kerak.
-        const newHistory = [...userHistory, { role: "user", parts: [{ text: message.trim() }] }];
+        // Yangi foydalanuvchi xabarini tarixga qo‘shish
+        const newHistory = [
+            ...userHistory,
+            { role: "user", parts: [{ text: message.trim() }] }
+        ];
 
+        // Gemini modelini chaqirish
         const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash-latest" });
+        const chat = model.startChat({ history: newHistory });
 
-        // `startChat` orqali suhbatni boshlash
-        const chat = model.startChat({
-            history: newHistory,
-            // systemInstruction (modelga qoida berish)
-            // Agar siz `systemInstruction`dan foydalanmoqchi bo'lsangiz, uni shu yerda kiriting.
-            // Bu qoidalar doimiy bo'lishi kerak. Yuqoridagi SYSTEM_PROMPT'ni bu yerga kiritish mumkin.
-        });
-        
+        // AI javobini olish
         const result = await chat.sendMessage(SYSTEM_PROMPT + "\n" + message.trim());
         const aiResponse = result.response.text();
 
@@ -123,7 +119,7 @@ export default async function handler(req, res) {
             return res.status(500).json({ error: "AI javob bera olmadi." });
         }
 
-        // AI javobini tarixga qo‘shish
+        // Tarixga AI javobini ham qo‘shish
         userHistory.push(
             { role: "user", parts: [{ text: message.trim() }] },
             { role: "model", parts: [{ text: aiResponse }] }
@@ -133,6 +129,7 @@ export default async function handler(req, res) {
         // Tarixni saqlash
         await saveChatHistory(chatHistory);
 
+        // Javob qaytarish
         return res.status(200).json({ response: aiResponse });
     } catch (err) {
         console.error("Xato:", err);
